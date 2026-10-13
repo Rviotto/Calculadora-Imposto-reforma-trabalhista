@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora TCV — Reforma Tributária IBM</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    background: #f0f4ff;
+    color: #1f2328;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  .container { max-width: 760px; margin: 0 auto; }
+
+  header {
+    background: #1E2761;
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 28px 32px 22px;
+  }
+  header .label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8FB8E8;
+    margin-bottom: 6px;
+  }
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p  { font-size: 13px; color: #8FB8E8; margin-top: 4px; }
+
+  .card {
+    background: white;
+    padding: 28px 32px;
+    border: 1px solid #e5e7eb;
+    border-top: none;
+  }
+  .card.last { border-radius: 0 0 10px 10px; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 22px;
+  }
+  @media (max-width: 540px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #57606a;
+  }
+  .label-hint {
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #8a94a0;
+    margin-left: 4px;
+  }
+
+  input[type="text"], select {
+    padding: 10px 14px;
+    border: 1.5px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #1f2328;
+    background: #fff;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  input[type="text"]:focus, select:focus {
+    outline: none;
+    border-color: #3b82d4;
+    box-shadow: 0 0 0 3px rgba(59,130,212,0.15);
+  }
+
+  .tipo-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .tipo-btn {
+    padding: 10px;
+    border: 2px solid #d0d7de;
+    border-radius: 6px;
+    background: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    color: #57606a;
+  }
+  .tipo-btn:hover  { border-color: #3b82d4; color: #3b82d4; }
+  .tipo-btn.active { border-color: #1E2761; background: #1E2761; color: white; }
+
+  .natop-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+  .natop-pill.tributada { background: #dbeafe; color: #1d4ed8; }
+  .natop-pill.imune     { background: #dcfce7; color: #166534; }
+  .natop-pill.isenta    { background: #fef3c7; color: #92400e; }
+
+  .btn-calc {
+    width: 100%;
+    padding: 13px;
+    background: #1E2761;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 0.15s;
+  }
+  .btn-calc:hover { background: #2d3a8c; }
+
+  /* Resultado */
+  .resultado { display: none; }
+  .resultado.show { display: block; }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .result-header h2 { font-size: 16px; font-weight: 700; color: #1E2761; }
+
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  .badge.transicao { background: #fef3c7; color: #92400e; }
+  .badge.pleno     { background: #dcfce7; color: #166534; }
+  .badge.imune     { background: #dcfce7; color: #166534; }
+  .badge.isenta    { background: #fef3c7; color: #92400e; }
+  .badge.natop     { background: #f0f4ff; color: #1E2761; }
+  .badge.gray      { background: #f7f8fa; color: #57606a; }
+
+  .linhas { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+
+  .linha {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 14px;
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  .linha.renda    { background: #f7f8fa; color: #57606a; }
+  .linha.imposto  { background: #f7f8fa; color: #57606a; }
+  .linha.credito  { background: #dcfce7; color: #166534; }
+  .linha.recolhe  { background: #fef3c7; color: #92400e; }
+  .linha.isento   { background: #dcfce7; color: #166534; font-weight: 600; }
+  .linha.tcv      { background: #1E2761; color: white; font-size: 16px; font-weight: 700; }
+  .linha.extinto  { background: #f7f8fa; color: #c0c0c0; text-decoration: line-through; font-size: 13px; }
+  .linha.destaque { background: #dbeafe; color: #1d4ed8; font-weight: 600; }
+  .linha.gov      { background: #fdf4ff; color: #6b21a8; font-weight: 600; }
+
+  .linha .name { flex: 1; }
+  .linha .val  { font-weight: 700; white-space: nowrap; margin-left: 12px; }
+
+  .alerta {
+    padding: 10px 14px;
+    border-radius: 0 5px 5px 0;
+    font-size: 13px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+  .alerta.warn  { background: #fef3c7; border-left: 3px solid #f59e0b; color: #92400e; }
+  .alerta.info  { background: #dbeafe; border-left: 3px solid #3b82d4; color: #1d4ed8; }
+  .alerta.green { background: #dcfce7; border-left: 3px solid #22c55e; color: #166534; }
+  .alerta.purple{ background: #fdf4ff; border-left: 3px solid #a855f7; color: #6b21a8; }
+
+  .separador {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #57606a;
+    padding: 6px 0 4px;
+    font-weight: 600;
+  }
+
+  .info-ano {
+    font-size: 12px;
+    color: #57606a;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .natop-desc {
+    font-size: 12px;
+    color: #57606a;
+    background: #f7f8fa;
+    border-radius: 5px;
+    padding: 8px 12px;
+    margin-top: 4px;
+    border-left: 3px solid #d0d7de;
+    display: none;
+  }
+  .natop-desc.show { display: block; }
+
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: #57606a;
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="label">IBM Brazil · Tax Guidance · Reforma Tributária · LC 214/2025</div>
+    <h1>Calculadora de TCV</h1>
+    <p>Serviços IBM &amp; Revenda OEM — CBS/IBS | NATOPs IBM | Lista LC 116/03</p>
+  </header>
+
+  <!-- INPUTS -->
+  <div class="card">
+    <div class="form-grid">
+
+      <!-- Tipo -->
+      <div class="form-group full">
+        <label>Tipo de operação</label>
+        <div class="tipo-group">
+          <button class="tipo-btn active" onclick="setTipo('servico', this)">🖥 Serviço IBM</button>
+          <button class="tipo-btn" onclick="setTipo('oem', this)">📦 Revenda OEM</button>
+        </div>
+      </div>
+
+      <!-- NATOP -->
+      <div class="form-group full">
+        <label>NATOP <span class="label-hint">— Natureza da Operação (Código IBM)</span></label>
+        <select id="natop" onchange="atualizarNatop()">
+          <!-- Serviços IBM -->
+          <optgroup label="─── Serviços de TI (LC 116 item 1) ───" id="og-servico">
+            <option value="3361" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de implantação e desenvolvimento de sistemas, configuração, customização e programação (AD&amp;M sem consultoria).">3361 — Análise de Sistemas</option>
+            <option value="3340" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de programação, não incluindo elaboração de SW. Fase introdutória de Análise de Sistemas.">3340 — Programação</option>
+            <option value="3355" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Processamento, gerenciamento, coleta e administração de dados do cliente (Torre Data Center).">3355 — Processamento de Dados</option>
+            <option value="3365" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Elaboração de programa de computador por encomenda (SW desenvolvido no País — Torre Application Services).">3365 — Elaboração de Programas de Computador</option>
+            <option value="1122" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Cessão do direito de uso de SW importado ou adquirido de terceiros no Brasil, mediante licenciamento.">1122 — Cessão de Uso SW Importado/Mercado Interno</option>
+            <option value="1123" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Cessão do direito de uso de SW desenvolvido pela IBM Brasil, mediante licenciamento.">1123 — Cessão de Uso SW Desenvolvido IBM Brasil</option>
+            <option value="3366" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Orientação e auxílio técnico em organização, planejamento e equipamentos (HW), processos e atividades para o cliente.">3366 — Assessoria de Informática (exceto SW)</option>
+            <option value="3346" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Orientação e auxílio técnico em sistemas (SW) de forma individualizada.">3346 — Assessoria de SW</option>
+            <option value="3362" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Esclarecimentos técnico-científicos, pareceres sobre HW, processos e atividades (AD&amp;M com consultoria).">3362 — Consultoria de Informática (exceto SW)</option>
+            <option value="3347" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Esclarecimentos técnico-científicos, pareceres sobre sistemas (SW), de forma individualizada.">3347 — Consultoria de SW</option>
+            <option value="2212" data-tipo="servico" data-regime="tributada" data-local="local_prestacao_bem_movel" data-desc="Instalação, configuração e manutenção de SW (Telesuporte).">2212 — Instalação/Config./Manutenção de Programas</option>
+            <option value="2214" data-tipo="servico" data-regime="tributada" data-local="local_prestacao_bem_movel" data-desc="Suporte técnico em informática (Suporte de HW).">2214 — Suporte Técnico em Informática (HW)</option>
+            <option value="3342" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Planejamento, elaboração ou manutenção de páginas eletrônicas.">3342 — Atualização de Páginas Eletrônicas</option>
+          </optgroup>
+          <optgroup label="─── Pesquisa e Desenvolvimento (LC 116 item 2) ───" id="og-pd">
+            <option value="3312" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de pesquisas e desenvolvimento de qualquer natureza.">3312 — Pesquisa e Desenvolvimento</option>
+            <option value="3313" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de pesquisas e desenvolvimento em SW. Necessário aprovação de Taxes para faturar.">3313 — Pesquisa e Desenvolvimento em SW</option>
+          </optgroup>
+          <optgroup label="─── Construção Civil (LC 116 item 7) ───" id="og-civil">
+            <option value="3364" data-tipo="servico" data-regime="tributada" data-local="imovel" data-desc="Construção do ambiente físico (prédios, salas, pisos etc.) para instalações de informática do cliente.">3364 — Obras (Construção Civil)</option>
+          </optgroup>
+          <optgroup label="─── Educação/Treinamento (LC 116 item 8) ───" id="og-edu">
+            <option value="3363" data-tipo="servico" data-regime="tributada" data-local="local_prestacao_bem_movel" data-desc="Prestação de serviços de treinamento, educação e cursos, prevendo inclusive seu valor.">3363 — Ensino / Treinamento</option>
+          </optgroup>
+          <optgroup label="─── Intermediação/Representação (LC 116 items 10/10.09) ───" id="og-inter">
+            <option value="8741" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de agenciamento/intermediação de contratos de leasing, franchising ou factoring (Lenovo).">8741 — Intermediação (leasing/franchising/factoring)</option>
+            <option value="3354" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de intermediação/representação de bens de terceiros como HW ou SW.">3354 — Representação Comercial</option>
+          </optgroup>
+          <optgroup label="─── Manutenção/Instalação de HW (LC 116 item 14) ───" id="og-hw">
+            <option value="2222" data-tipo="servico" data-regime="tributada" data-local="local_prestacao_bem_movel" data-desc="Manutenção dos equipamentos (HW) dos clientes, avulsa ou por contrato continuado (não inclui SW e Redes).">2222 — Manutenção de HW</option>
+            <option value="3333" data-tipo="servico" data-regime="tributada" data-local="local_prestacao_bem_movel" data-desc="Conserto de equipamentos dos clientes fora do contrato de manutenção (PERCALL).">3333 — Conserto (PERCALL)</option>
+            <option value="3358" data-tipo="servico" data-regime="tributada" data-local="local_prestacao_bem_movel" data-desc="Assistência técnica.">3358 — Assistência Técnica</option>
+            <option value="3356" data-tipo="servico" data-regime="tributada" data-local="local_prestacao_bem_movel" data-desc="Instalação de equipamentos (HW) para clientes, quando o HW não é fornecido pela IBM na mesma operação.">3356 — Instalação de HW</option>
+          </optgroup>
+          <optgroup label="─── Apoio Técnico/Administrativo (LC 116 item 17) ───" id="og-admin">
+            <option value="3345" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Consultoria/assessoria de qualquer natureza que não seja de informática.">3345 — Consultoria/Assessoria (exceto informática)</option>
+            <option value="3348" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Traduções e interpretações de manuais técnicos.">3348 — Tradução e Interpretação</option>
+            <option value="3309" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de teleatendimento por telefone, e-mail ou plataforma Service Now. Em caso de uso, contatar Taxes.">3309 — Teleatendimento</option>
+            <option value="3343" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de backoffice (planejamento, coordenação, organização técnica, financeira ou administrativa).">3343 — Organização Administrativa</option>
+            <option value="3381" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de recrutamento e seleção.">3381 — Recrutamento e Seleção</option>
+            <option value="8667" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Colocação de trabalhadores qualificados à disposição de outra empresa, temporariamente ou não.">8667 — Cessão de Mão de Obra</option>
+            <option value="3370" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de suporte administrativo (faturamento, contabilidade etc.).">3370 — Serviços Administrativos e Contábeis</option>
+            <option value="3349" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Apresentação de palestras, conferências ou seminários por funcionário IBM.">3349 — Apresentação de Palestra</option>
+          </optgroup>
+          <optgroup label="─── Desembaraço Aduaneiro (LC 116 item 33) ───" id="og-aduana">
+            <option value="3350" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Serviços de desembaraço aduaneiro, expedição e trâmites junto a repartições públicas.">3350 — Despachante Aduaneiro</option>
+          </optgroup>
+          <!-- Exportação / Parcial -->
+          <optgroup label="─── Exportação / Serviço com parte no Exterior ───" id="og-export">
+            <option value="EXPORTACAO" data-tipo="servico" data-regime="imune" data-local="exterior" data-desc="Fornecimento para residente/domiciliado no exterior com execução e consumo fora do Brasil. Imune de CBS/IBS (art. 11 da LC 214/2025).">EXPORTAÇÃO — Serviço/Bem ao Exterior (Imune CBS/IBS)</option>
+            <option value="PARCIAL_EXT" data-tipo="servico" data-regime="tributada" data-local="domicilio_cliente" data-desc="Parte do serviço consumida no Brasil (tributada) e parte no exterior (imune). Necessário segregar a base.">PARCIAL EXTERIOR — Consumo parte BR / parte Exterior</option>
+          </optgroup>
+          <!-- OEM -->
+          <optgroup label="─── Revenda OEM (Mercadoria) ───" id="og-oem">
+            <option value="OEM_INTERNO" data-tipo="oem" data-regime="tributada" data-local="local_entrega" data-desc="Revenda de bens materiais (HW/equipamentos) adquiridos de terceiros para revenda ao cliente no mercado interno.">OEM — Revenda Mercado Interno</option>
+            <option value="OEM_GOVERNO" data-tipo="oem" data-regime="tributada" data-local="local_entrega" data-desc="Revenda de bens materiais para Ente Governamental. IBS com fato gerador no pagamento (regime de caixa).">OEM — Revenda para Ente Governamental</option>
+            <option value="OEM_EXPORT"  data-tipo="oem" data-regime="imune"    data-local="exterior"      data-desc="Exportação de bens materiais para o exterior. Imune de CBS/IBS.">OEM — Exportação (Imune)</option>
+          </optgroup>
+        </select>
+        <div id="natop-pill" style="margin-top:6px"></div>
+        <div id="natop-desc" class="natop-desc"></div>
+      </div>
+
+      <!-- Renda -->
+      <div class="form-group">
+        <label>Renda / Receita (R$)</label>
+        <input type="text" id="renda" placeholder="Ex: 100.000,00" oninput="mascaraMoeda(this)" />
+      </div>
+
+      <!-- Ano -->
+      <div class="form-group">
+        <label>Ano de referência</label>
+        <select id="ano">
+          <option value="2026">2026 (Teste CBS 0,9% + IBS 0,1%)</option>
+          <option value="2027">2027 (IBS 0,1% | PIS/COFINS extinto)</option>
+          <option value="2028">2028 (IBS 0,1% | ICMS/ISS normais)</option>
+          <option value="2029">2029 (ICMS/ISS 90%)</option>
+          <option value="2030">2030 (ICMS/ISS 80%)</option>
+          <option value="2031">2031 (ICMS/ISS 70%)</option>
+          <option value="2032">2032 (ICMS/ISS 60%)</option>
+          <option value="2033" selected>2033+ (Regime Pleno — extinção ICMS/ISS)</option>
+        </select>
+      </div>
+
+      <!-- Local da prestação -->
+      <div class="form-group full" id="grupo-local">
+        <label>Local da operação <span class="label-hint">— define ente do IBS (art. 11 LC 214/2025)</span></label>
+        <select id="local">
+          <option value="domicilio_cliente">Art. 11, X — Domicílio do adquirente (cloud, SW, consultoria, serviços imateriais)</option>
+          <option value="local_prestacao_bem_movel">Art. 11, V — Local da prestação (serviço sobre bem móvel: manutenção/instalação HW)</option>
+          <option value="imovel">Art. 11, II — Local do imóvel (obras, serviços sobre bem imóvel)</option>
+          <option value="local_entrega">Art. 11, I — Local de entrega do bem ao destinatário (OEM/bens materiais)</option>
+          <option value="exterior">Exterior — Exportação (Imune CBS/IBS)</option>
+        </select>
+      </div>
+
+      <!-- Tipo de cliente -->
+      <div class="form-group full" id="grupo-cliente">
+        <label>Tipo de cliente <span class="label-hint">— determina lógica de NF-e e retenções</span></label>
+        <select id="cliente" onchange="atualizarCliente()">
+          <option value="privado">Privado (pessoa jurídica de direito privado)</option>
+          <option value="gov_federal">Governo Federal (administração direta, autarquias, fundações, EP e SEM federais)</option>
+          <option value="gov_estadual">Governo Estadual / DF / Municipal (adm. direta, autarquias e fundações)</option>
+          <option value="gov_ep_estadual">Empresa Pública / SEM Estadual ou Municipal</option>
+        </select>
+      </div>
+
+      <!-- tpOperGov (apenas governo) -->
+      <div class="form-group full" id="grupo-tpoper" style="display:none">
+        <label>Tipo de operação governamental <span class="label-hint">— tpOperGov (NT 2025.002 v1.40)</span></label>
+        <select id="tpoper">
+          <option value="1">1 — Fornecimento com pagamento posterior (NF-e de fornecimento)</option>
+          <option value="2">2 — Recebimento do pagamento com fornecimento já realizado (NF-e de pagamento)</option>
+          <option value="3">3 — Fornecimento com pagamento já realizado</option>
+          <option value="4">4 — Recebimento do pagamento com fornecimento posterior</option>
+        </select>
+      </div>
+
+      <!-- Ente governamental (apenas governo) -->
+      <div class="form-group full" id="grupo-ente" style="display:none">
+        <label>Ente governamental contratante <span class="label-hint">— tpEnteGov (NT 2025.002 v1.40)</span></label>
+        <select id="ente">
+          <option value="1">1 — União (Federal)</option>
+          <option value="2">2 — Estado</option>
+          <option value="3">3 — Distrito Federal</option>
+          <option value="4">4 — Município</option>
+          <option value="5">5 — Consórcio Público</option>
+          <option value="6">6 — Comitê Gestor do IBS</option>
+        </select>
+      </div>
+
+      <!-- Custo OEM -->
+      <div class="form-group full" id="grupo-custo" style="display:none">
+        <label>Custo de aquisição OEM (R$) <span class="label-hint">— para cálculo do crédito CBS/IBS (não-cumulatividade)</span></label>
+        <input type="text" id="custo" placeholder="Ex: 70.000,00" oninput="mascaraMoeda(this)" />
+      </div>
+
+      <!-- Percentual exterior (serviço parcial) -->
+      <div class="form-group full" id="grupo-parcial" style="display:none">
+        <label>% do serviço consumido no Brasil <span class="label-hint">— o restante é imune</span></label>
+        <select id="pct-brasil">
+          <option value="0.25">25% no Brasil / 75% no exterior</option>
+          <option value="0.50" selected>50% no Brasil / 50% no exterior</option>
+          <option value="0.75">75% no Brasil / 25% no exterior</option>
+          <option value="0.90">90% no Brasil / 10% no exterior</option>
+        </select>
+      </div>
+
+    </div>
+
+    <button class="btn-calc" onclick="calcular()">Calcular TCV</button>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="card last resultado" id="resultado">
+    <div class="result-header">
+      <h2 id="res-titulo">Resultado</h2>
+      <div class="badges" id="res-badges"></div>
+    </div>
+
+    <div id="alertas-topo"></div>
+    <div class="linhas" id="linhas"></div>
+    <div id="alertas-base"></div>
+    <div class="info-ano" id="info-ano"></div>
+
+    <footer>
+      Alíquotas CBS/IBS a partir de 2027 são estimativas — ainda não publicadas oficialmente.<br>
+      Alíquotas 2026: CBS 0,9% + IBS 0,1% conforme LC 214/2025. NATOPs conforme Lista IBM — Maio 2025.<br>
+      LC 214/2025 · EC 132/2023 · NT 2025.002 v1.40/1.50/1.52 · IN 1234/2012<br>
+      <strong>Consulte o time de Tax IBM antes de usar em propostas.</strong>
+    </footer>
+  </div>
+
+</div>
+
+<script>
+  // ─────────────────────────────────────────────
+  // ALÍQUOTAS por ano (conforme quadro de transição)
+  // CBS/IBS a partir de 2027: valores estimados/exemplificativos
+  // Proporção ICMS/ISS: oficial (LC 214/2025)
+  // ─────────────────────────────────────────────
+  const aliquotas = {
+    //          cbs     ibs     iss    pis_cofins  icms   fase
+    2026: { cbs:0.009,  ibs:0.001,  iss:0.05,  pis_cofins:0.0925, icms:0.12,  fase:'teste'     },
+    2027: { cbs:0.0875, ibs:0.001,  iss:0.05,  pis_cofins:0,      icms:0.12,  fase:'transicao' },
+    2028: { cbs:0.0875, ibs:0.001,  iss:0.05,  pis_cofins:0,      icms:0.12,  fase:'transicao' },
+    2029: { cbs:0.13,   ibs:0.04,   iss:0.045, pis_cofins:0,      icms:0.108, fase:'transicao' }, // ICMS/ISS 90%
+    2030: { cbs:0.155,  ibs:0.07,   iss:0.040, pis_cofins:0,      icms:0.096, fase:'transicao' }, // ICMS/ISS 80%
+    2031: { cbs:0.18,   ibs:0.10,   iss:0.035, pis_cofins:0,      icms:0.084, fase:'transicao' }, // ICMS/ISS 70%
+    2032: { cbs:0.205,  ibs:0.13,   iss:0.030, pis_cofins:0,      icms:0.072, fase:'transicao' }, // ICMS/ISS 60%
+    2033: { cbs:0.1725, ibs:0.0925, iss:0,     pis_cofins:0,      icms:0,     fase:'pleno'     },
+  };
+
+  // Percentual da CBS destinado ao ente comprador (art. 372 LC 214/2025)
+  // IBS: 100% ao ente comprador a partir de 01/01/2027
+  // CBS: gradual — 10%/20%/30%/40%/100% de 2029 a 2033
+  const cbsDestEnteGov = { 2026:0, 2027:0, 2028:0, 2029:0.10, 2030:0.20, 2031:0.30, 2032:0.40, 2033:1 };
+
+  // NATOPs que têm local fixo (não deixam usuário escolher)
+  const localFixoMap = {
+    'EXPORTACAO':   'exterior',
+    'OEM_EXPORT':   'exterior',
+    'OEM_INTERNO':  'local_entrega',
+    'OEM_GOVERNO':  'local_entrega',
+    '3364':         'imovel',
+    '2222':         'local_prestacao_bem_movel',
+    '3333':         'local_prestacao_bem_movel',
+    '3358':         'local_prestacao_bem_movel',
+    '3356':         'local_prestacao_bem_movel',
+    '2212':         'local_prestacao_bem_movel',
+    '2214':         'local_prestacao_bem_movel',
+    '3363':         'local_prestacao_bem_movel',
+  };
+
+  // ─────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────
+  function mascaraMoeda(input) {
+    let v = input.value.replace(/\D/g, '');
+    v = (parseInt(v||0) / 100).toFixed(2);
+    input.value = parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function parseMoeda(str) {
+    if (!str) return 0;
+    return parseFloat(str.replace(/\./g,'').replace(',','.')) || 0;
+  }
+  function fmt(v) {
+    return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function pct(v) {
+    return (v*100).toFixed(2).replace('.',',') + '%';
+  }
+  function linhaHTML(cls, nome, valor, pctVal) {
+    const pctStr = pctVal !== undefined
+      ? ` <span style="font-size:12px;font-weight:400;opacity:0.75">(${pct(pctVal)})</span>` : '';
+    return `<div class="linha ${cls}"><span class="name">${nome}${pctStr}</span><span class="val">${fmt(valor)}</span></div>`;
+  }
+  function sep(texto) { return `<div class="separador">${texto}</div>`; }
+  function alerta(tipo, texto) { return `<div class="alerta ${tipo}">${texto}</div>`; }
+
+  function localLabel(local) {
+    const m = {
+      domicilio_cliente:        'Domicílio do adquirente (art. 11,X)',
+      local_prestacao_bem_movel:'Local da prestação (art. 11,V)',
+      imovel:                   'Local do imóvel (art. 11,II)',
+      local_entrega:            'Local de entrega (art. 11,I)',
+      exterior:                 'Exterior',
+    };
+    return m[local] || local;
+  }
+
+  // ─────────────────────────────────────────────
+  // UI helpers
+  // ─────────────────────────────────────────────
+  function setTipo(tipo, btn) {
+    document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('grupo-custo').style.display = tipo === 'oem' ? 'block' : 'none';
+    document.getElementById('resultado').classList.remove('show');
+
+    // Filtra opções de NATOP
+    const natopSel = document.getElementById('natop');
+    Array.from(natopSel.options).forEach(o => {
+      const dt = o.dataset.tipo;
+      o.hidden = dt && dt !== tipo;
+    });
+    // Seleciona primeiro visível
+    for (const o of natopSel.options) { if (!o.hidden) { natopSel.value = o.value; break; } }
+    atualizarNatop();
+  }
+
+  function getTipo() {
+    return document.querySelector('.tipo-btn.active').textContent.includes('OEM') ? 'oem' : 'servico';
+  }
+
+  function atualizarNatop() {
+    const natopSel = document.getElementById('natop');
+    const natop    = natopSel.value;
+    const opt      = natopSel.options[natopSel.selectedIndex];
+    const regime   = opt ? opt.dataset.regime : 'tributada';
+    const desc     = opt ? opt.dataset.desc   : '';
+    const localPad = opt ? opt.dataset.local  : 'domicilio_cliente';
+
+    // Pill de regime
+    const pillEl = document.getElementById('natop-pill');
+    const regMap = {
+      tributada: { cls:'tributada', txt:'⬤ Operação Tributada' },
+      imune:     { cls:'imune',     txt:'✓ Imune de CBS/IBS (Exportação)' },
+    };
+    const r = regMap[regime] || regMap.tributada;
+    pillEl.innerHTML = `<span class="natop-pill ${r.cls}">${r.txt}</span>`;
+
+    // Descrição da NATOP
+    const descEl = document.getElementById('natop-desc');
+    if (desc) { descEl.textContent = desc; descEl.classList.add('show'); }
+    else       { descEl.classList.remove('show'); }
+
+    // Grupos mostrar/ocultar
+    const isParcial  = natop === 'PARCIAL_EXT';
+    const isExport   = natop === 'EXPORTACAO' || natop === 'OEM_EXPORT';
+    document.getElementById('grupo-parcial').style.display = isParcial ? 'block' : 'none';
+
+    // Local: fixo ou editável
+    const grupoLocal = document.getElementById('grupo-local');
+    const localSel   = document.getElementById('local');
+    if (localFixoMap[natop]) {
+      localSel.value = localFixoMap[natop];
+      grupoLocal.style.display = (isExport) ? 'none' : 'block';
+      // Desabilita seleção manual para NATOPs com local fixo
+      localSel.disabled = true;
+    } else {
+      localSel.disabled = false;
+      grupoLocal.style.display = 'block';
+      // Sugestão inteligente
+      if (localPad && !localFixoMap[natop]) {
+        localSel.value = localPad;
+      }
+    }
+
+    atualizarCliente();
+  }
+
+  function atualizarCliente() {
+    const cliente = document.getElementById('cliente').value;
+    const isGov   = cliente.startsWith('gov_');
+    document.getElementById('grupo-tpoper').style.display = isGov ? 'block' : 'none';
+    document.getElementById('grupo-ente').style.display   = isGov ? 'block' : 'none';
+  }
+
+  // ─────────────────────────────────────────────
+  // CALCULAR
+  // ─────────────────────────────────────────────
+  function calcular() {
+    const renda   = parseMoeda(document.getElementById('renda').value);
+    const ano     = parseInt(document.getElementById('ano').value);
+    const natop   = document.getElementById('natop').value;
+    const local   = document.getElementById('local').value;
+    const cliente = document.getElementById('cliente').value;
+    const tpoper  = document.getElementById('tpoper').value;
+    const ente    = document.getElementById('ente').value;
+    const custo   = getTipo() === 'oem' ? parseMoeda(document.getElementById('custo').value) : 0;
+    const pctBR   = parseFloat(document.getElementById('pct-brasil')?.value || '1');
+
+    if (renda <= 0) { alert('Informe um valor de renda válido.'); return; }
+
+    const aq = aliquotas[ano] || aliquotas[2033];
+    const isGov = cliente.startsWith('gov_');
+    const natopOpt = document.getElementById('natop').options[document.getElementById('natop').selectedIndex];
+    const natopLabel = natopOpt ? natopOpt.text.split('—')[1]?.trim() || natopOpt.text : natop;
+
+    let html       = '';
+    let alertsTopo = '';
+    let alertsBase = '';
+    let infoTxt    = '';
+
+    // ── Badges ──
+    const badgesEl = document.getElementById('res-badges');
+    const faseBadge = aq.fase === 'teste' ? 'transicao' : (aq.fase === 'transicao' ? 'transicao' : 'pleno');
+    const faseLabel = aq.fase === 'teste' ? `${ano} — Período de Teste` : (aq.fase === 'transicao' ? `${ano} — Transição` : `${ano} — Regime Pleno`);
+    const localeBadge = localLabel(local);
+
+    const enteNomes = {'1':'União','2':'Estado','3':'DF','4':'Município','5':'Consórcio','6':'Comitê Gestor IBS'};
+    const clienteLabels = {
+      privado: 'Privado',
+      gov_federal: 'Gov Federal',
+      gov_estadual: 'Gov Estadual/Municipal',
+      gov_ep_estadual: 'EP/SEM Estadual',
+    };
+
+    badgesEl.innerHTML = `
+      <span class="badge ${faseBadge}">${faseLabel}</span>
+      <span class="badge natop">NATOP: ${natop}</span>
+      <span class="badge gray">${localeBadge}</span>
+      <span class="badge ${isGov ? 'transicao' : 'gray'}">${clienteLabels[cliente]||cliente}${isGov ? ' — Ente: '+enteNomes[ente] : ''}</span>
+    `;
+
+    document.getElementById('res-titulo').textContent =
+      getTipo() === 'oem' ? `Resultado — Revenda OEM (${natopLabel})` : `Resultado — Serviço IBM (${natopLabel})`;
+
+    // ════════════════════════════════════
+    // EXPORTAÇÃO — Imune CBS/IBS
+    // ════════════════════════════════════
+    if (natop === 'EXPORTACAO' || natop === 'OEM_EXPORT') {
+      const valISS       = renda * aq.iss;
+      const valPisCofins = renda * aq.pis_cofins;
+      const valICMS      = natop === 'OEM_EXPORT' ? renda * aq.icms : 0;
+      const tcv          = renda + valISS + valPisCofins + valICMS;
+
+      alertsTopo += alerta('green', '✓ <strong>Exportação — Imune de CBS/IBS</strong> (art. 11 da LC 214/2025). Para ser imune: (1) cliente residente/domiciliado no exterior E (2) consumo/execução fora do Brasil.');
+
+      html += linhaHTML('renda', 'Renda (base de cálculo)', renda);
+      html += sep('CBS/IBS — Imunes (Exportação)');
+      html += `<div class="linha isento"><span class="name">CBS — Exportação (Imune)</span><span class="val">R$ 0,00</span></div>`;
+      html += `<div class="linha isento"><span class="name">IBS — Exportação (Imune)</span><span class="val">R$ 0,00</span></div>`;
+
+      if (aq.iss > 0 || aq.pis_cofins > 0 || aq.icms > 0) {
+        html += sep('Impostos atuais (ainda vigentes)');
+        if (aq.iss > 0)        html += linhaHTML('imposto', 'ISS', valISS, aq.iss);
+        if (aq.pis_cofins > 0) html += linhaHTML('imposto', 'PIS/COFINS', valPisCofins, aq.pis_cofins);
+        if (aq.icms > 0 && natop === 'OEM_EXPORT') html += linhaHTML('imposto', 'ICMS', valICMS, aq.icms);
+      }
+
+      html += `<div style="height:4px"></div>`;
+      html += linhaHTML('tcv', 'TCV TOTAL', tcv);
+
+      alertsBase += alerta('info', '📌 Caso o consumo seja de fato no Brasil (ainda que o adquirente esteja no exterior), deve-se recolher CBS/IBS. Créditos de operações anteriores são mantidos e aproveitados.');
+      infoTxt = `Imune CBS/IBS · TCV = Renda + tributos remanescentes vigentes`;
+
+    // ════════════════════════════════════
+    // SERVIÇO PARCIAL (parte no exterior)
+    // ════════════════════════════════════
+    } else if (natop === 'PARCIAL_EXT') {
+      const rendaBR      = renda * pctBR;
+      const rendaEXT     = renda * (1 - pctBR);
+      const valCBS       = rendaBR * aq.cbs;
+      const valIBS       = rendaBR * aq.ibs;
+      const valISS       = rendaBR * aq.iss;
+      const valPisCofins = rendaBR * aq.pis_cofins;
+      const totalImpostos = valCBS + valIBS + valISS + valPisCofins;
+      const tcv = renda + totalImpostos;
+
+      alertsTopo += alerta('warn', `⚠ <strong>Serviço parcial:</strong> ${pct(pctBR)} consumido no Brasil (tributado) · ${pct(1-pctBR)} consumido no exterior (imune). Necessário segregar o serviço na nota fiscal.`);
+
+      html += linhaHTML('renda', 'Renda total', renda);
+      html += linhaHTML('renda', `Parcela tributada no Brasil (${pct(pctBR)})`, rendaBR);
+      html += `<div class="linha isento"><span class="name">Parcela imune — Exterior (${pct(1-pctBR)})</span><span class="val">${fmt(rendaEXT)}</span></div>`;
+
+      html += sep('CBS/IBS sobre parcela brasileira');
+      html += linhaHTML('destaque', 'CBS', valCBS, aq.cbs);
+      html += linhaHTML('destaque', `IBS (${localLabel(local)})`, valIBS, aq.ibs);
+
+      if (aq.iss > 0 || aq.pis_cofins > 0) {
+        html += sep('Impostos atuais sobre parcela brasileira');
+        if (aq.iss > 0)        html += linhaHTML('imposto', 'ISS', valISS, aq.iss);
+        if (aq.pis_cofins > 0) html += linhaHTML('imposto', 'PIS/COFINS', valPisCofins, aq.pis_cofins);
+      }
+
+      html += `<div style="height:4px"></div>`;
+      html += linhaHTML('tcv', 'TCV TOTAL', tcv);
+      infoTxt = `Parcela tributada: ${fmt(rendaBR)} · CBS+IBS: ${fmt(valCBS+valIBS)} · Total impostos: ${fmt(totalImpostos)}`;
+
+    // ════════════════════════════════════
+    // VENDA PARA ENTE GOVERNAMENTAL
+    // ════════════════════════════════════
+    } else if (isGov && (natop === 'OEM_GOVERNO' || !natop.startsWith('OEM'))) {
+      const enteNome = enteNomes[ente] || ente;
+
+      // Percentual CBS destinado ao ente
+      const pctCBSente = cbsDestEnteGov[ano] || (ano >= 2033 ? 1 : 0);
+      // IBS: 100% ao ente a partir de 2027; em 2026 é 100% à União (teste)
+      const ibsAoEnte  = ano >= 2027 ? aq.ibs : 0;
+
+      const valCBS       = renda * aq.cbs;
+      const valIBS       = renda * aq.ibs;
+      const valISS       = renda * aq.iss;
+      const valPisCofins = renda * aq.pis_cofins;
+      const valICMS      = getTipo() === 'oem' ? renda * aq.icms : 0;
+
+      // Crédito OEM se aplicável
+      const creditoCBS = getTipo() === 'oem' && custo > 0 ? custo * aq.cbs : 0;
+      const creditoIBS = getTipo() === 'oem' && custo > 0 ? custo * aq.ibs : 0;
+      const recolheCBS = Math.max(0, valCBS - creditoCBS);
+      const recolheIBS = Math.max(0, valIBS - creditoIBS);
+
+      const cbsAoEnte = recolheCBS * pctCBSente;
+      const ibsAoEnteTot = recolheIBS; // IBS sempre 100% ao ente ≥2027
+
+      const totalImpostos = recolheCBS + recolheIBS + valISS + valPisCofins + valICMS;
+      const tcv = renda + totalImpostos;
+
+      // Alerta NF-e governamental
+      const tpoperLabels = {
+        '1': '1 — Fornecimento com pagamento posterior',
+        '2': '2 — Recebimento do pagamento (fato gerador IBS)',
+        '3': '3 — Fornecimento com pagamento já realizado',
+        '4': '4 — Recebimento do pagamento com fornecimento posterior',
+      };
+      alertsTopo += alerta('purple', `🏛 <strong>Venda para Ente Governamental — ${enteNome}</strong><br>
+        tpOperGov = ${tpoperLabels[tpoper]||tpoper}<br>
+        IBS: fato gerador = momento do <strong>PAGAMENTO</strong> (regime de caixa — art. 10 §2º LC 214/2025).<br>
+        ${tpoper === '1' || tpoper === '4' ? '⚡ Esta NF-e é de FORNECIMENTO: destacar CBS/IBS como estimativa. Emitir nova NF-e no pagamento (tpOperGov=2).' : ''}
+        ${tpoper === '2' ? '✅ Esta NF-e é de PAGAMENTO: IBS/CBS constituem débito. Vincular via <strong>refDFeAnt</strong> (BB05) à NF-e de fornecimento.' : ''}
+      `);
+
+      html += linhaHTML('renda', 'Renda (base de cálculo)', renda);
+
+      if (getTipo() === 'oem' && custo > 0) {
+        html += linhaHTML('renda', 'Custo de aquisição OEM', custo);
+        html += sep('Créditos CBS/IBS da compra (não-cumulatividade)');
+        html += linhaHTML('credito', 'Crédito CBS', creditoCBS, aq.cbs);
+        html += linhaHTML('credito', 'Crédito IBS', creditoIBS, aq.ibs);
+      }
+
+      html += sep(`CBS/IBS — Destinação ao ente: ${enteNome}`);
+      html += linhaHTML('gov', `CBS a recolher ${pctCBSente < 1 ? '('+pct(pctCBSente)+' ao ente; restante à União)' : '(100% ao ente)'}`, recolheCBS, aq.cbs);
+      html += linhaHTML('gov', `IBS a recolher (${ano >= 2027 ? '100% ao '+enteNome : 'teste — não recolhe ainda'})`, recolheIBS, aq.ibs);
+
+      if (aq.iss > 0 || aq.pis_cofins > 0 || aq.icms > 0) {
+        html += sep('Impostos atuais (ainda vigentes)');
+        if (aq.iss > 0)        html += linhaHTML('imposto', 'ISS', valISS, aq.iss);
+        if (aq.pis_cofins > 0) html += linhaHTML('imposto', 'PIS/COFINS', valPisCofins, aq.pis_cofins);
+        if (aq.icms > 0 && getTipo() === 'oem') html += linhaHTML('imposto', 'ICMS', valICMS, aq.icms);
+      }
+
+      html += `<div style="height:4px"></div>`;
+      html += linhaHTML('tcv', 'TCV TOTAL', tcv);
+
+      // Alertas legais
+      if (ano === 2026) {
+        alertsBase += alerta('warn', `⚡ 2026 — CBS 0,9% (${fmt(recolheCBS)}) e IBS 0,1% (${fmt(recolheIBS)}) como TESTE. Compensação no PIS/COFINS (art. 348 LC 214/2025). Preencher tpOperGov conforme NT 2025.002.`);
+      }
+      alertsBase += alerta('info', `📌 Art. 473 LC 214/2025: toda a arrecadação de IBS e CBS vai ao ente contratante (${enteNome}). Alíquotas dos demais entes = zero; alíquota do ente = elevada para absorver 100%.<br>
+        <strong>Regra BB02-10 (NT v1.52):</strong> se Tags de IBS-UF ou IBS-MUN de ente diverso do contratante forem > 0, a NF-e será REJEITADA.`);
+      if (ano >= 2029 && ano <= 2032) {
+        alertsBase += alerta('warn', `⚠ Destinação CBS ao ${enteNome} em ${ano}: ${pct(pctCBSente)} · Restante (${pct(1-pctCBSente)}) fica com a União (art. 372 LC 214/2025).`);
+      }
+      if (tpoper === '2') {
+        alertsBase += alerta('purple', `📋 NF-e de PAGAMENTO: preencher campo <strong>refDFeAnt (BB05)</strong> com a chave de acesso da NF-e de fornecimento (tpOperGov=1). Os demais tributos (ICMS, PIS, COFINS, ISS) NÃO são destacados — mencionar nos dados adicionais que foram tributados na NF-e de fornecimento anterior (CST x90 ICMS).`);
+      }
+      if (ano >= 2027 && (cliente === 'gov_federal')) {
+        alertsBase += alerta('warn', `🔒 Retenção Federal (IN 1234/2012): IRRF 4,8% (a partir de 27/06/2023 — IN 2.145/2023) + PIS/COFINS/CSLL 4,65% = retenção total de 9,45%. Verificar regras específicas por NATOP na tabela IBM.`);
+      }
+
+      infoTxt = `CBS: ${fmt(recolheCBS)} (${pct(pctCBSente)} ao ${enteNome}) · IBS: ${fmt(recolheIBS)} (100% ao ${enteNome} ≥2027) · Total: ${fmt(totalImpostos)}`;
+
+    // ════════════════════════════════════
+    // SERVIÇO IBM — MERCADO INTERNO (privado)
+    // ════════════════════════════════════
+    } else if (getTipo() === 'servico') {
+      const valCBS       = renda * aq.cbs;
+      const valIBS       = renda * aq.ibs;
+      const valISS       = renda * aq.iss;
+      const valPisCofins = renda * aq.pis_cofins;
+      const totalNovos   = valCBS + valIBS;
+      const totalAntigos = valISS + valPisCofins;
+      const totalImpostos = totalNovos + totalAntigos;
+      const tcv = renda + totalImpostos;
+
+      html += linhaHTML('renda', 'Renda (base de cálculo)', renda);
+
+      if (aq.iss > 0 || aq.pis_cofins > 0) {
+        html += sep('Impostos atuais (ainda vigentes)');
+        if (aq.iss > 0)        html += linhaHTML('imposto', 'ISS', valISS, aq.iss);
+        else                   html += `<div class="linha extinto"><span class="name">ISS</span><span class="val">Extinto em 2033</span></div>`;
+        if (aq.pis_cofins > 0) html += linhaHTML('imposto', 'PIS/COFINS', valPisCofins, aq.pis_cofins);
+        else                   html += `<div class="linha extinto"><span class="name">PIS/COFINS</span><span class="val">Extinto em 2027</span></div>`;
+      } else {
+        html += `<div class="linha extinto"><span class="name">ISS</span><span class="val">Extinto em 2033</span></div>`;
+        html += `<div class="linha extinto"><span class="name">PIS/COFINS</span><span class="val">Extinto em 2027</span></div>`;
+      }
+
+      html += sep('Novos tributos — CBS/IBS (LC 214/2025)');
+      html += linhaHTML('destaque', 'CBS (Federal)', valCBS, aq.cbs);
+      html += linhaHTML('destaque', `IBS (${localLabel(local)})`, valIBS, aq.ibs);
+
+      html += `<div style="height:4px"></div>`;
+      html += linhaHTML('tcv', 'TCV TOTAL', tcv);
+
+      if (ano === 2026) {
+        alertsBase += alerta('warn', `⚡ 2026: CBS (${fmt(valCBS)}) e IBS (${fmt(valIBS)}) podem ser compensados no PIS/COFINS (art. 348 LC 214/2025). O custo efetivo não dobra.`);
+      }
+      if (ano === 2027) {
+        alertsBase += alerta('info', `📌 2027: PIS/COFINS extinto. CBS ainda sem alíquota oficial (valor exemplificativo). IBS = 0,1% (oficial).`);
+      }
+
+      // Alerta retenção cliente privado
+      alertsBase += alerta('info', `💼 Retenção cliente privado (IN 459/2004): PIS/COFINS/CSLL = 4,65% · IRRF = 1,5% (serviços profissionais) ou conforme tabela NATOP IBM. Verificar exceções por NATOP.`);
+
+      infoTxt = `CBS: ${fmt(valCBS)} (${pct(aq.cbs)}) · IBS: ${fmt(valIBS)} (${pct(aq.ibs)}) · Total impostos: ${fmt(totalImpostos)} · Carga efetiva: ${pct(totalImpostos/renda)}`;
+
+    // ════════════════════════════════════
+    // OEM — MERCADO INTERNO (privado)
+    // ════════════════════════════════════
+    } else {
+      const creditoCBS   = custo > 0 ? custo * aq.cbs : 0;
+      const creditoIBS   = custo > 0 ? custo * aq.ibs : 0;
+      const debitoCBS    = renda * aq.cbs;
+      const debitoIBS    = renda * aq.ibs;
+      const recolheCBS   = Math.max(0, debitoCBS - creditoCBS);
+      const recolheIBS   = Math.max(0, debitoIBS - creditoIBS);
+      const valICMS      = renda * aq.icms;
+      const valPisCofins = renda * aq.pis_cofins;
+      const totalRecolhe = recolheCBS + recolheIBS + valICMS + valPisCofins;
+      const tcv          = renda + totalRecolhe;
+      const margem       = renda - custo;
+
+      html += linhaHTML('renda', 'Renda / Preço de venda', renda);
+      if (custo > 0) {
+        html += linhaHTML('renda', 'Custo de aquisição OEM', custo);
+        html += linhaHTML('renda', 'Margem bruta', margem);
+        html += sep('Créditos CBS/IBS da compra (não-cumulatividade ampla)');
+        html += linhaHTML('credito', 'Crédito CBS da nota de compra', creditoCBS, aq.cbs);
+        html += linhaHTML('credito', 'Crédito IBS da nota de compra', creditoIBS, aq.ibs);
+      }
+
+      html += sep('Débitos CBS/IBS sobre a venda');
+      html += linhaHTML('imposto', 'CBS s/ venda', debitoCBS, aq.cbs);
+      html += linhaHTML('imposto', `IBS s/ venda (${localLabel(local)})`, debitoIBS, aq.ibs);
+
+      html += sep('Líquido a recolher (débito − crédito)');
+      html += linhaHTML('recolhe', 'CBS a recolher', recolheCBS);
+      html += linhaHTML('recolhe', 'IBS a recolher', recolheIBS);
+
+      if (aq.icms > 0) {
+        html += sep('Impostos atuais (ainda vigentes)');
+        html += linhaHTML('imposto', 'ICMS', valICMS, aq.icms);
+      } else {
+        html += `<div class="linha extinto"><span class="name">ICMS</span><span class="val">Extinto em 2033</span></div>`;
+      }
+      if (aq.pis_cofins > 0) html += linhaHTML('imposto', 'PIS/COFINS', valPisCofins, aq.pis_cofins);
+      else html += `<div class="linha extinto"><span class="name">PIS/COFINS</span><span class="val">Extinto em 2027</span></div>`;
+
+      html += `<div style="height:4px"></div>`;
+      html += linhaHTML('tcv', 'TCV TOTAL', tcv);
+
+      if (ano === 2026) alertsBase += alerta('warn', '⚡ 2026: CBS/IBS podem ser compensados no PIS/COFINS (art. 348 LC 214/2025). O custo efetivo não dobra.');
+      if (custo > 0 && custo >= renda) alertsBase += alerta('warn', '⚠ Custo de aquisição igual ou maior que a renda de venda — verifique os valores.');
+
+      const cargaEfetiva = totalRecolhe / renda;
+      infoTxt = custo > 0
+        ? `CBS/IBS sobre a margem (${fmt(margem)}) = ${fmt(recolheCBS+recolheIBS)} · Carga total: ${fmt(totalRecolhe)} · Carga efetiva: ${pct(cargaEfetiva)}`
+        : `CBS a recolher: ${fmt(recolheCBS)} · IBS a recolher: ${fmt(recolheIBS)} · Carga total: ${fmt(totalRecolhe)}`;
+    }
+
+    // ── Nota sobre base de cálculo (LC 214/2025) ──
+    const notaBase = `<strong>Base de cálculo (LC 214/2025):</strong> valor da operação incluindo juros, multas, encargos e descontos condicionais. Excluídos: IBS/CBS próprios, IPI, descontos incondicionais${aq.fase !== 'pleno' ? ', ISS, ICMS, PIS e COFINS (art. transitório — até 31/12/2032)' : ''}.`;
+
+    // ── Renderiza ──
+    document.getElementById('alertas-topo').innerHTML = alertsTopo;
+    document.getElementById('linhas').innerHTML = html;
+    document.getElementById('alertas-base').innerHTML = alertsBase;
+    document.getElementById('info-ano').innerHTML =
+      `<strong>Resumo:</strong> ${infoTxt}<br><br>${notaBase}<br><br>` +
+      `<em>⚠ Alíquotas CBS/IBS a partir de 2027 são estimativas — ainda não publicadas oficialmente. Consulte o time de Tax IBM antes de usar em propostas.</em>`;
+    document.getElementById('resultado').classList.add('show');
+  }
+
+  // Init
+  atualizarNatop();
+</script>
+</body>
+</html>
